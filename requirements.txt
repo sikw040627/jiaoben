@@ -1,0 +1,15 @@
+# Core runtime
+numpy>=1.26
+opencv-python-headless>=4.9
+pillow>=10.0
+adbutils>=2.5.0
+
+# Optional: control-tree (UiAutomator2) automation. Needs a device to init.
+uiautomator2>=3.0.0
+
+# Optional OCR backends (pick one; not required for core features):
+#   pip install pytesseract   # also needs the Tesseract binary on PATH
+#   pip install easyocr       # pulls in torch (large)
+
+# Dev / self-test
+pytest>=8.0
