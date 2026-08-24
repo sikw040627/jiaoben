@@ -25,7 +25,8 @@ from .flow import Flow
 from .geometry import Point, Rect, ResolutionAdapter
 from .input_controller import InputController
 from .logging_conf import get_logger, setup_logging
-from .numbers import parse_float, parse_int, read_int
+from .numbers import parse_float, parse_int, read_float, read_int
+from .ocr import preprocess_for_digits
 from .parallel import run_flow_on_each, run_jobs
 from .recorder import Player, Recorder
 from .report import RunReport, StepResult, archive_frame
@@ -35,6 +36,7 @@ from .stability import (
     force_stop, frame_diff_ratio, frames_similar, restart_app,
     start_app, wait_until_stable,
 )
+from .templateset import TemplateSet, scale_template
 from .vision import MatchResult
 
 __version__ = "0.1.0"
@@ -49,7 +51,8 @@ __all__ = [
     "DeviceManager", "call_with_retries",
     "wait_until_stable", "frame_diff_ratio", "frames_similar",
     "restart_app", "force_stop", "start_app",
-    "parse_int", "parse_float", "read_int",
+    "parse_int", "parse_float", "read_int", "read_float",
+    "preprocess_for_digits", "TemplateSet", "scale_template",
     "run_jobs", "run_flow_on_each",
     "AutoAutoError", "DeviceError", "NoDeviceError",
     "TargetNotFoundError", "OCRUnavailableError", "ScriptError",

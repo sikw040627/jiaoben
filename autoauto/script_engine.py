@@ -99,7 +99,10 @@ class Engine:
     def find_image(self, tpl, threshold: float = 0.85,
                    region: Rect | None = None, multiscale: bool = False,
                    frame: np.ndarray | None = None) -> MatchResult:
+        from .templateset import TemplateSet
         img = frame if frame is not None else self.frame()
+        if isinstance(tpl, TemplateSet):
+            return tpl.find(img, threshold, region)
         template = load_template(tpl)
         if multiscale:
             return vision.find_template_multiscale(img, template, threshold, region)
@@ -172,11 +175,29 @@ class Engine:
         return len(hits)
 
     # -- ocr ------------------------------------------------------------
-    def ocr(self, region: Rect | None = None, prefer: str | None = None) -> str:
-        from .ocr import get_ocr_engine
+    def ocr(self, region: Rect | None = None, prefer: str | None = None,
+            preprocess: bool = False) -> str:
+        """OCR a screen region to text.
+
+        With `preprocess=True` the region is grayscaled/thresholded/upscaled
+        first (helps small digit readouts like coins/HP/timers).
+        """
+        from .ocr import get_ocr_engine, preprocess_for_digits
         if self._ocr is None:
             self._ocr = get_ocr_engine(prefer=prefer)
+        if preprocess:
+            from .capture import crop
+            img = preprocess_for_digits(crop(self.frame(), region))
+            return self._ocr.read_text(img, None)
         return self._ocr.read_text(self.frame(), region)
+
+    def read_number(self, region: Rect | None = None, prefer: str | None = None,
+                    as_float: bool = False):
+        """OCR a region and parse the number in it (coins / HP / countdown)."""
+        from .numbers import parse_float, parse_int
+        text = self.ocr(region=region, prefer=prefer, preprocess=True)
+        return (parse_float(text, fix_confusions=True) if as_float
+                else parse_int(text, fix_confusions=True))
 
     # -- misc -----------------------------------------------------------
     def sleep(self, seconds: float) -> None:

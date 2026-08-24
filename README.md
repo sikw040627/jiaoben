@@ -91,6 +91,11 @@ print("金色像素:", p, "该点颜色:", eng.pixel(100, 200))
 | 失败自动截图存档 | `archive_frame`（`Flow` 自动调用） | `report.py` |
 | 多设备管理 | `DeviceManager` | `devicemanager.py` |
 | 断线重连 / 瞬断重试 | `call_with_retries` | `devicemanager.py` |
+| 多分辨率模板集（跨机型找图） | `TemplateSet` / `scale_template` | `templateset.py` |
+| 任务流变量 / 子流程 / while | `Flow`（op: `set`/`incr`/`call`/`while_image`）+ `$var` 引用 | `flow.py` |
+| 置信度自适应找图 | `vision.find_best` | `vision.py` |
+| OCR 数字读数（金币/血量/倒计时） | `Engine.read_number` / `numbers.read_int` / `read_float` | `numbers.py` |
+| 数字 OCR 预处理（灰度/二值/放大） | `preprocess_for_digits` | `ocr.py` |
 
 声明式任务流示例：
 

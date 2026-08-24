@@ -15,10 +15,28 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+import cv2
 import numpy as np
 
 from .errors import OCRUnavailableError
 from .geometry import Rect
+
+
+def preprocess_for_digits(image: np.ndarray, scale: float = 2.0,
+                          invert: bool = False) -> np.ndarray:
+    """Grayscale + Otsu-threshold + upscale to help OCR small digit readouts.
+
+    Returns a single-channel uint8 binary image. Pure function (no device).
+    """
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image
+    if scale and scale != 1.0:
+        gray = cv2.resize(gray, None, fx=scale, fy=scale,
+                          interpolation=cv2.INTER_CUBIC)
+    _t, binary = cv2.threshold(gray, 0, 255,
+                               cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    if invert:
+        binary = cv2.bitwise_not(binary)
+    return binary
 
 
 @dataclass

@@ -49,6 +49,13 @@ def parse_float(text: str, fix_confusions: bool = False) -> float | None:
 
 
 def read_int(engine, region: Rect | None = None, prefer: str | None = None) -> int | None:
-    """OCR a screen region and parse the first integer. Needs an OCR backend."""
-    text = engine.ocr(region=region, prefer=prefer)
-    return parse_int(text, fix_confusions=True)
+    """OCR a screen region (digit-preprocessed) and parse an integer.
+
+    Needs an OCR backend installed (pytesseract or easyocr).
+    """
+    return engine.read_number(region=region, prefer=prefer, as_float=False)
+
+
+def read_float(engine, region: Rect | None = None, prefer: str | None = None) -> float | None:
+    """OCR a screen region (digit-preprocessed) and parse a float."""
+    return engine.read_number(region=region, prefer=prefer, as_float=True)
