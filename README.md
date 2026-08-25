@@ -153,13 +153,13 @@ sh ondevice/autorun.sh http://192.168.1.10:8000 daily_task          # 下载并�
 命令行速览：
 
 ```powershell
-.\.venv\Scripts\python.exe -m autoauto export-sh rec.json rec.sh     # JSON 录制 → .sh
+.\.venv\Scripts\python.exe -m autoauto export-sh rec.json rec.sh --loops 3 --speed 2  # 循环3次/2倍速
 .\.venv\Scripts\python.exe -m autoauto store list                    # 列表(名称/大小/动作数/修改时间)
 .\.venv\Scripts\python.exe -m autoauto store info daily_task         # 单个脚本元信息
 .\.venv\Scripts\python.exe -m autoauto store rename daily_task morning [--force]
 .\.venv\Scripts\python.exe -m autoauto push daily_task --url http://HOST:8000
 .\.venv\Scripts\python.exe -m autoauto pull daily_task --url http://HOST:8000
-.\.venv\Scripts\python.exe -m autoauto sync --url http://HOST:8000    # 双向同步
+.\.venv\Scripts\python.exe -m autoauto sync --url http://HOST:8000 --policy local  # 双向同步(冲突以本地为准)
 .\.venv\Scripts\python.exe -m autoauto store list --url http://HOST:8000   # 远程目录(带元信息)
 ```
 
@@ -176,7 +176,7 @@ ocr.py           OCR（可插拔后端）
 input_controller 高层点击/滑动（分辨率自适应+人性化）
 ui.py            UiAutomator2 控件树 + 连续手势
 recorder.py      录制/回放     getevent.py  真机触摸解析
-shscript.py      录制 → 安卓可执行 .sh（input 命令）
+shscript.py      录制 → 安卓可执行 .sh（input 命令；支持循环/倍速）
 store.py         根目录 .sh 文件存储库（ScriptStore：存/列/改名/元信息）
 cloudstore.py    远程存储接口 + 内存/文件/HTTP 实现（RemoteStore）
 cloudserver.py   自托管云端服务（stdlib http.server）

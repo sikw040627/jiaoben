@@ -33,13 +33,14 @@ stability.py     帧差(卡死检测)/等待画面稳定/App 强停重启
 devicemanager.py 多设备管理 + 瞬断重试(call_with_retries)
 parallel.py      多设备并行跑任务流(run_flow_on_each)，聚合各机 RunReport
 shscript.py      录制Action → 安卓可执行 .sh(input 命令)，保留时序
+                 (可选 speed 倍速 / loops 循环，loops 用 POSIX while 计数)
+sync.py          StoreSync：push/pull/双向 sync(policy=skip/local/remote 解决冲突)
 store.py         根目录 .sh 文件存储库 ScriptStore(save/list/load/delete/
                  info/list_detailed/rename；ScriptInfo=大小/mtime/动作数)
 cloudstore.py    RemoteStore 接口 + Memory/File/Http 三实现
                  (含 rename、info/list_detailed；RemoteInfo=大小/动作数/mtime)
 cloudserver.py   自托管云端服务(stdlib http.server，REST /scripts，
                  /scripts?detail=1 返回带元信息的目录)
-sync.py          StoreSync：本地 ScriptStore ↔ RemoteStore push/pull/双向
 touch.py         TouchBackend 接口(adb input 默认 / minitouch 占位未实现)
 ondevice/        手机端 Termux 运行时 autorun.sh(下载云端脚本并执行)
 __main__.py      CLI：devices/screencap/tap/swipe/findimage/record/play
