@@ -36,7 +36,9 @@ shscript.py      录制Action → 安卓可执行 .sh(input 命令)，保留时�
 store.py         根目录 .sh 文件存储库 ScriptStore(save/list/load/delete/
                  info/list_detailed/rename；ScriptInfo=大小/mtime/动作数)
 cloudstore.py    RemoteStore 接口 + Memory/File/Http 三实现
-cloudserver.py   自托管云端服务(stdlib http.server，REST /scripts)
+                 (含 rename、info/list_detailed；RemoteInfo=大小/动作数/mtime)
+cloudserver.py   自托管云端服务(stdlib http.server，REST /scripts，
+                 /scripts?detail=1 返回带元信息的目录)
 sync.py          StoreSync：本地 ScriptStore ↔ RemoteStore push/pull/双向
 touch.py         TouchBackend 接口(adb input 默认 / minitouch 占位未实现)
 ondevice/        手机端 Termux 运行时 autorun.sh(下载云端脚本并执行)

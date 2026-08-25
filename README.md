@@ -160,6 +160,7 @@ sh ondevice/autorun.sh http://192.168.1.10:8000 daily_task          # 下载并�
 .\.venv\Scripts\python.exe -m autoauto push daily_task --url http://HOST:8000
 .\.venv\Scripts\python.exe -m autoauto pull daily_task --url http://HOST:8000
 .\.venv\Scripts\python.exe -m autoauto sync --url http://HOST:8000    # 双向同步
+.\.venv\Scripts\python.exe -m autoauto store list --url http://HOST:8000   # 远程目录(带元信息)
 ```
 
 > `RemoteStore` 是可插拔接口，将来接对象存储（OSS/S3/COS）只需再加一个实现。
