@@ -1,0 +1,3 @@
+# On-device replay scripts must keep LF line endings — CRLF breaks the
+# `#!/system/bin/sh` shebang and `input` commands on Android.
+*.sh text eol=lf

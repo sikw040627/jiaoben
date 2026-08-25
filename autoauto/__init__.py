@@ -32,10 +32,14 @@ from .recorder import Player, Recorder
 from .report import RunReport, StepResult, archive_frame
 from .scheduler import RunStats, run_loop
 from .script_engine import Context, Engine, load_template
+from .shscript import (
+    action_to_cmd, actions_to_sh, convert_recording, save_sh,
+)
 from .stability import (
     force_stop, frame_diff_ratio, frames_similar, restart_app,
     start_app, wait_until_stable,
 )
+from .store import ScriptStore
 from .templateset import TemplateSet, scale_template
 from .vision import MatchResult
 
@@ -54,6 +58,8 @@ __all__ = [
     "parse_int", "parse_float", "read_int", "read_float",
     "preprocess_for_digits", "TemplateSet", "scale_template",
     "run_jobs", "run_flow_on_each",
+    "actions_to_sh", "action_to_cmd", "save_sh", "convert_recording",
+    "ScriptStore",
     "AutoAutoError", "DeviceError", "NoDeviceError",
     "TargetNotFoundError", "OCRUnavailableError", "ScriptError",
     "__version__",
