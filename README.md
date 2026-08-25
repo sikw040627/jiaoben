@@ -120,6 +120,49 @@ report.save("logs/last_run.json")
 print(report.to_dict())
 ```
 
+## 录制 → 云端 → 手机复用
+
+录制产物可编译成一份 **安卓可直接执行的 `.sh`**（用系统 `input tap/swipe/keyevent/text`
+命令），存进项目根目录 `store/`，上传到自托管云端服务，再由手机下载后本地复用——回放时
+**不需要 PC / ADB**。
+
+```python
+from autoauto import ScriptStore, StoreSync, HttpRemoteStore, Recorder
+
+# 1) 录制 → 编译成 .sh 存入根目录 store/
+store = ScriptStore("store")
+store.save_actions("daily_task", rec.actions)     # rec 为 Recorder 录到的动作
+
+# 2) 同步到云端（自托管服务，见下）
+sync = StoreSync(store, HttpRemoteStore("http://192.168.1.10:8000"))
+sync.push("daily_task")          # 上传；sync.sync() 可双向同步
+```
+
+自托管云端服务（纯标准库，无需外部账号）：
+
+```powershell
+.\.venv\Scripts\python.exe -m autoauto serve --root store --host 0.0.0.0 --port 8000 [--token 令牌]
+```
+
+手机端（Termux，无需 root）下载并运行——见 `ondevice/README.md`：
+
+```sh
+sh ondevice/autorun.sh http://192.168.1.10:8000 daily_task          # 下载并立即执行
+```
+
+命令行速览：
+
+```powershell
+.\.venv\Scripts\python.exe -m autoauto export-sh rec.json rec.sh     # JSON 录制 → .sh
+.\.venv\Scripts\python.exe -m autoauto store list                    # 本地存储列表
+.\.venv\Scripts\python.exe -m autoauto push daily_task --url http://HOST:8000
+.\.venv\Scripts\python.exe -m autoauto pull daily_task --url http://HOST:8000
+.\.venv\Scripts\python.exe -m autoauto sync --url http://HOST:8000    # 双向同步
+```
+
+> `RemoteStore` 是可插拔接口，将来接对象存储（OSS/S3/COS）只需再加一个实现。
+> 连续多指注入（摇杆+技能）需 minitouch/MaaTouch，为占位未实现，见 `UNFINISHED.md`。
+
 ## 架构分层
 
 ```
@@ -130,12 +173,19 @@ ocr.py           OCR（可插拔后端）
 input_controller 高层点击/滑动（分辨率自适应+人性化）
 ui.py            UiAutomator2 控件树 + 连续手势
 recorder.py      录制/回放     getevent.py  真机触摸解析
+shscript.py      录制 → 安卓可执行 .sh（input 命令）
+store.py         根目录 .sh 文件存储库（ScriptStore）
+cloudstore.py    远程存储接口 + 内存/文件/HTTP 实现（RemoteStore）
+cloudserver.py   自托管云端服务（stdlib http.server）
+sync.py          本地 ↔ 云端 同步（StoreSync）
+touch.py         触摸注入后端接口（adb input 默认 / minitouch 占位）
 script_engine.py 编排：变量/找图等待/找图点击/条件等待
 scheduler.py     定时/循环/停止条件
 flow.py          声明式任务流（重试/断言/条件/循环）
 report.py        运行报告 + 失败截图存档
 devicemanager.py 多设备管理 + 断线重连重试
 __main__.py      命令行入口
+ondevice/        手机端 Termux 运行时（autorun.sh）
 ```
 
 ## 测试

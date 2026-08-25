@@ -32,7 +32,15 @@ scheduler.py     定时/循环/停止条件(run_loop)
 stability.py     帧差(卡死检测)/等待画面稳定/App 强停重启
 devicemanager.py 多设备管理 + 瞬断重试(call_with_retries)
 parallel.py      多设备并行跑任务流(run_flow_on_each)，聚合各机 RunReport
+shscript.py      录制Action → 安卓可执行 .sh(input 命令)，保留时序
+store.py         根目录 .sh 文件存储库 ScriptStore(save/list/load/delete)
+cloudstore.py    RemoteStore 接口 + Memory/File/Http 三实现
+cloudserver.py   自托管云端服务(stdlib http.server，REST /scripts)
+sync.py          StoreSync：本地 ScriptStore ↔ RemoteStore push/pull/双向
+touch.py         TouchBackend 接口(adb input 默认 / minitouch 占位未实现)
+ondevice/        手机端 Termux 运行时 autorun.sh(下载云端脚本并执行)
 __main__.py      CLI：devices/screencap/tap/swipe/findimage/record/play
+                 + export-sh/store/serve/push/pull/sync(均无需设备)
 ```
 
 设计原则：**设备层可替换**（`DeviceProtocol`），所有上层逻辑（视觉/输入/任务流/调度）都用假设备+假时钟做了单元测试。**时钟与 sleep 全部可注入**，测试零等待。
@@ -64,6 +72,14 @@ __main__.py      CLI：devices/screencap/tap/swipe/findimage/record/play
 | 规模化 | **多设备并行 + 报告聚合** | 线程池并发跑同一任务流，聚合各机结果 |
 
 > 若要进一步提升执行流畅度/兼容新版本 Android，可评估把执行层从 `adb input` 换成 **MaaTouch / minitouch**（`/dev/input` 注入，事件更连续、带真实设备号）——见第 5 节。
+
+## 4.5 录制→云端→手机复用（已打通）
+
+「像自动精灵手机版那样：对局中录制 → 上传云端 → 手机下载复用」这条链路已实现：
+录制产物编译成安卓可直接执行的 `.sh`（`shscript.py`）→ 存根目录 `store/`（`store.py`）→
+自托管云端服务（`cloudserver.py`）+ 可插拔 `RemoteStore`（`cloudstore.py`）+ 同步（`sync.py`）→
+手机 Termux 用 `ondevice/autorun.sh` 下载并 `sh` 执行，回放不需要 PC/ADB。
+无新增依赖（全部标准库）。仍缺：对象存储后端、原生 App、游戏多指连续注入（见 `UNFINISHED.md`）。
 
 ## 5. 待办 / 当前缺口（下一位 AI 可接手）
 

@@ -20,14 +20,22 @@
 
 - **[已完成] 本地文件存储 + `.sh` 导出**：录制动作可编译成安卓可直接执行的 shell 脚本
   （`input tap/swipe/keyevent/text`，回放不需要 PC/ADB），存到根目录 `store/`。
-  见 `autoauto/shscript.py`、`autoauto/store.py`，脚本放在 `store/`。
-- **[未实现] 云端上传/下载后端**：目前只有本地文件后端。云端（自建后端或对象存储
-  OSS/S3/COS）实现与 `ScriptStore` 相同的 `save/list/load/delete` 接口即可平替。预留位置：
-  可新增 `autoauto/cloudstore.py` 走同一接口。
-- **[未实现] 手机端独立运行时**：当前架构是「PC 经 ADB 驱动手机」，并非在手机上独立运行的
-  App。要做到「手机下载后本地复用」需 Termux+Python 或 Android App 承载录制/回放/同步。
-- **[未实现] 游戏对局高保真录制**：`getevent` 目前只还原单指 tap/swipe/long_press，未处理
-  多指同时（摇杆+技能）；回放走 `adb input` 不连续。需集成 MaaTouch/minitouch（见第 5 节待办）。
+  见 `autoauto/shscript.py`、`autoauto/store.py`。
+- **[已完成] 云端上传/下载后端（自托管）**：`autoauto/cloudstore.py` 定义可插拔 `RemoteStore`
+  接口（内存/文件/HTTP 三实现），`autoauto/cloudserver.py` 是纯标准库自托管服务，
+  `autoauto/sync.py` 做本地↔云端 push/pull/双向同步。CLI：`serve/push/pull/sync`。
+- **[已完成] 手机端运行时（Termux）**：`ondevice/autorun.sh` 在手机上 `curl` 下载云端脚本并
+  `sh` 执行，无需 PC/ADB、无需 root，实现「手机下载后本地复用」。
+- **[未实现] 对象存储后端（OSS/S3/COS）**：目前云端是自托管 HTTP 服务。要接对象存储，实现
+  同一 `RemoteStore` 接口（`put/get/list/delete/exists`）新增一个类即可，调用方无需改动。
+- **[未实现] 原生 Android App 运行时**：Termux 方案已能跑；若要免 Termux 的原生 App
+  （录制/回放/同步一体），属可选后续工作，需 Android 构建工具链，非本环境可产出。
+- **[未实现 / 占位] 游戏对局高保真录制（多指连续注入）**：`getevent` 目前只还原单指
+  tap/swipe/long_press，回放走 `adb input`（离散、不连续），摇杆+技能等同时多指不跟手。
+  连续多指注入需集成 **minitouch / MaaTouch**（向设备推送原生注入器并经 socket 驱动，常需
+  root 或 `app_process`）。已在 `autoauto/touch.py` 预留 `TouchBackend` 接口与
+  `MinitouchBackend` 占位（构造即抛 `NotImplementedError`）。**此部分保留不实现**：需真机+原生
+  二进制、本环境无法产出/自测，且游戏输入用途触及项目声明的范围边界。
 
 > 说明：以上属**正常自动化范围内的后续工程**，不涉及隐藏/反检测。对联机游戏做自动化可能违反其
 > 服务条款，使用者自行评估合规与法律风险。
