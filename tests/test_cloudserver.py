@@ -47,6 +47,15 @@ def test_http_get_missing(server):
         r.get("nope")
 
 
+def test_http_rename(server):
+    r = HttpRemoteStore(server)
+    assert r.rename("ghost", "x") is False
+    r.put("a", "input tap 1 2\n")
+    assert r.rename("a", "b") is True
+    assert not r.exists("a")
+    assert r.get("b") == "input tap 1 2\n"
+
+
 def test_auth_required(auth_server):
     bad = HttpRemoteStore(auth_server)  # no token
     with pytest.raises(RemoteStoreError):

@@ -40,6 +40,23 @@ class RemoteStore(Protocol):
     def list(self) -> list[str]: ...
     def delete(self, name: str) -> bool: ...
     def exists(self, name: str) -> bool: ...
+    def rename(self, old: str, new: str) -> bool: ...
+
+
+def _rename_via_copy(store: "RemoteStore", old: str, new: str) -> bool:
+    """Generic rename for stores without a native move: get -> put -> delete.
+
+    Returns False if `old` does not exist. Raises if `new` already exists.
+    """
+    try:
+        content = store.get(old)
+    except RemoteNotFound:
+        return False
+    if store.exists(new):
+        raise RemoteStoreError(f"target already exists: {new!r}")
+    store.put(new, content)
+    store.delete(old)
+    return True
 
 
 class MemoryRemoteStore:
@@ -66,6 +83,9 @@ class MemoryRemoteStore:
     def exists(self, name: str) -> bool:
         return str(name) in self._d
 
+    def rename(self, old: str, new: str) -> bool:
+        return _rename_via_copy(self, old, new)
+
 
 class FileRemoteStore:
     """File-backed RemoteStore — the persistent backend for the self-host server."""
@@ -90,6 +110,15 @@ class FileRemoteStore:
 
     def exists(self, name: str) -> bool:
         return self._s.exists(name)
+
+    def rename(self, old: str, new: str) -> bool:
+        try:
+            self._s.rename(old, new)
+            return True
+        except FileNotFoundError:
+            return False
+        except FileExistsError as e:
+            raise RemoteStoreError(str(e)) from None
 
 
 class HttpRemoteStore:
@@ -152,3 +181,7 @@ class HttpRemoteStore:
             return True
         except RemoteNotFound:
             return False
+
+    def rename(self, old: str, new: str) -> bool:
+        # No dedicated endpoint; move client-side via get -> put -> delete.
+        return _rename_via_copy(self, old, new)

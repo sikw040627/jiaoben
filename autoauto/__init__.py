@@ -43,7 +43,7 @@ from .stability import (
     force_stop, frame_diff_ratio, frames_similar, restart_app,
     start_app, wait_until_stable,
 )
-from .store import ScriptStore
+from .store import ScriptInfo, ScriptStore
 from .sync import StoreSync
 from .touch import AdbInputBackend, MinitouchBackend, TouchBackend
 from .templateset import TemplateSet, scale_template
@@ -65,7 +65,7 @@ __all__ = [
     "preprocess_for_digits", "TemplateSet", "scale_template",
     "run_jobs", "run_flow_on_each",
     "actions_to_sh", "action_to_cmd", "save_sh", "convert_recording",
-    "ScriptStore", "StoreSync",
+    "ScriptStore", "ScriptInfo", "StoreSync",
     "RemoteStore", "MemoryRemoteStore", "FileRemoteStore", "HttpRemoteStore",
     "RemoteStoreError", "RemoteNotFound",
     "TouchBackend", "AdbInputBackend", "MinitouchBackend",

@@ -11,8 +11,10 @@ Commands:
 
 Device-free commands (recording store & cloud sync):
   export-sh <in.json> <out.sh>  compile a JSON recording to an on-device .sh
-  store list [--root D]         list scripts in the local store
+  store list [--root D]         list scripts (name / size / actions / modified)
   store show <name> [--root D]  print a stored script
+  store info <name> [--root D]  print one script's metadata
+  store rename <old> <new> [--root D] [--force]   rename a stored script
   serve [--root D --host H --port P --token T]   run the self-host cloud server
   push <name> --url U [--token T --root D]       upload one script to the cloud
   pull <name> --url U [--token T --root D]       download one script from cloud
@@ -37,8 +39,25 @@ def _run_deviceless(args) -> bool:
         from .store import ScriptStore
         store = ScriptStore(args.root)
         if args.action == "list":
-            names = store.list()
-            print("\n".join(names) if names else "(empty)")
+            rows = store.list_detailed()
+            if not rows:
+                print("(empty)")
+            else:
+                print(f"{'NAME':<24} {'SIZE':>7} {'ACTS':>5}  MODIFIED")
+                for r in rows:
+                    acts = "-" if r.actions is None else str(r.actions)
+                    print(f"{r.name:<24} {r.size:>7} {acts:>5}  {r.modified_iso()}")
+        elif args.action == "info":
+            if not args.name:
+                print("store info needs a <name>"); return True
+            i = store.info(args.name)
+            print(f"name={i.name} size={i.size} actions={i.actions} "
+                  f"modified={i.modified_iso()}")
+        elif args.action == "rename":
+            if not args.name or not args.new:
+                print("store rename needs <old> <new>"); return True
+            store.rename(args.name, args.new, overwrite=args.force)
+            print(f"renamed {args.name} -> {args.new}")
         else:  # show
             if not args.name:
                 print("store show needs a <name>"); return True
@@ -86,8 +105,10 @@ def main(argv: list[str] | None = None) -> int:
     # --- device-free: store & cloud sync ---
     sp = sub.add_parser("export-sh"); sp.add_argument("infile"); sp.add_argument("out")
     sp.add_argument("--no-timing", action="store_true")
-    sp = sub.add_parser("store"); sp.add_argument("action", choices=["list", "show"])
-    sp.add_argument("name", nargs="?"); sp.add_argument("--root", default="store")
+    sp = sub.add_parser("store")
+    sp.add_argument("action", choices=["list", "show", "info", "rename"])
+    sp.add_argument("name", nargs="?"); sp.add_argument("new", nargs="?")
+    sp.add_argument("--root", default="store"); sp.add_argument("--force", action="store_true")
     sp = sub.add_parser("serve")
     sp.add_argument("--root", default="store"); sp.add_argument("--host", default="127.0.0.1")
     sp.add_argument("--port", type=int, default=8000); sp.add_argument("--token", default=None)

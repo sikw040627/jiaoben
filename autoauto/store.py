@@ -11,10 +11,27 @@ Deliberately minimal and dependency-free so it is trivially unit-testable with a
 """
 from __future__ import annotations
 
+import re
+from dataclasses import dataclass
 from pathlib import Path
 
 DEFAULT_ROOT = "store"
 SUFFIX = ".sh"
+
+_ACTIONS_RE = re.compile(r"^#\s*actions:\s*(\d+)", re.MULTILINE)
+
+
+@dataclass(frozen=True)
+class ScriptInfo:
+    """Metadata about one stored script (derived, no sidecar files)."""
+    name: str
+    size: int          # bytes on disk
+    modified: float    # epoch seconds (filesystem mtime)
+    actions: int | None  # parsed from the `# actions: N` header, if present
+
+    def modified_iso(self) -> str:
+        from datetime import datetime
+        return datetime.fromtimestamp(self.modified).isoformat(timespec="seconds")
 
 
 class ScriptStore:
@@ -62,6 +79,34 @@ class ScriptStore:
     def list(self) -> list[str]:
         """Names of stored scripts (without the `.sh` suffix), sorted."""
         return sorted(p.stem for p in self.root.glob(f"*{SUFFIX}") if p.is_file())
+
+    # -- metadata ------------------------------------------------------
+    def info(self, name: str) -> ScriptInfo:
+        """Size / modified-time / action-count for one script."""
+        p = self.path(name)
+        st = p.stat()  # raises FileNotFoundError if missing
+        m = _ACTIONS_RE.search(p.read_text(encoding="utf-8"))
+        return ScriptInfo(name=p.stem, size=st.st_size, modified=st.st_mtime,
+                          actions=int(m.group(1)) if m else None)
+
+    def list_detailed(self) -> list[ScriptInfo]:
+        """`info` for every stored script, sorted by name."""
+        return [self.info(n) for n in self.list()]
+
+    # -- rename --------------------------------------------------------
+    def rename(self, old: str, new: str, overwrite: bool = False) -> Path:
+        """Rename a stored script. Raises if source missing or target exists
+        (unless `overwrite`)."""
+        src = self.path(old)
+        dst = self.path(new)
+        if not src.is_file():
+            raise FileNotFoundError(f"no such script: {old!r}")
+        if src.resolve() == dst.resolve():
+            return dst
+        if dst.exists() and not overwrite:
+            raise FileExistsError(f"target already exists: {new!r}")
+        src.replace(dst)  # atomic; overwrites dst if present
+        return dst
 
     # -- delete --------------------------------------------------------
     def delete(self, name: str) -> bool:

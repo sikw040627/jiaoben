@@ -36,6 +36,27 @@ def test_push_all_pull_all(tmp_path):
     assert local.exists("z")
 
 
+def test_rename_both_ends(tmp_path):
+    local = _local(tmp_path)
+    remote = MemoryRemoteStore()
+    sync = StoreSync(local, remote)
+    local.save("old", "content\n"); remote.put("old", "content\n")
+    res = sync.rename("old", "new")
+    assert res == {"local": True, "remote": True}
+    assert local.exists("new") and not local.exists("old")
+    assert remote.exists("new") and not remote.exists("old")
+
+
+def test_rename_local_only(tmp_path):
+    local = _local(tmp_path)
+    remote = MemoryRemoteStore()
+    sync = StoreSync(local, remote)
+    local.save("old", "c")
+    res = sync.rename("old", "new")
+    assert res == {"local": True, "remote": False}
+    assert local.exists("new")
+
+
 def test_two_way_sync(tmp_path):
     local = _local(tmp_path)
     remote = MemoryRemoteStore()

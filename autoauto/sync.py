@@ -44,6 +44,15 @@ class StoreSync:
     def list_remote(self) -> list[str]:
         return self.remote.list()
 
+    def rename(self, old: str, new: str) -> dict[str, bool]:
+        """Rename on both ends where present. Returns which side was renamed."""
+        local_ok = False
+        if self.local.exists(old):
+            self.local.rename(old, new)
+            local_ok = True
+        remote_ok = self.remote.rename(old, new)
+        return {"local": local_ok, "remote": remote_ok}
+
     def sync(self) -> dict[str, list[str]]:
         """Reconcile: upload local-only names, download remote-only names.
 
