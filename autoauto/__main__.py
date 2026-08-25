@@ -8,6 +8,15 @@ Commands:
   findimage <template.png>      report best match (score + centre)
   record <out.json> [seconds]   record touches via getevent (needs a device)
   play <in.json> [loops]        replay a recording
+
+Device-free commands (recording store & cloud sync):
+  export-sh <in.json> <out.sh>  compile a JSON recording to an on-device .sh
+  store list [--root D]         list scripts in the local store
+  store show <name> [--root D]  print a stored script
+  serve [--root D --host H --port P --token T]   run the self-host cloud server
+  push <name> --url U [--token T --root D]       upload one script to the cloud
+  pull <name> --url U [--token T --root D]       download one script from cloud
+  sync --url U [--token T --root D]              two-way sync local <-> cloud
 """
 from __future__ import annotations
 
@@ -15,6 +24,44 @@ import argparse
 import sys
 
 from .logging_conf import setup_logging
+
+
+def _run_deviceless(args) -> bool:
+    """Handle commands that need no device. Return True if one was handled."""
+    if args.cmd == "export-sh":
+        from .shscript import convert_recording
+        convert_recording(args.infile, args.out, keep_timing=not args.no_timing)
+        print(f"compiled {args.infile} -> {args.out}")
+        return True
+    if args.cmd == "store":
+        from .store import ScriptStore
+        store = ScriptStore(args.root)
+        if args.action == "list":
+            names = store.list()
+            print("\n".join(names) if names else "(empty)")
+        else:  # show
+            if not args.name:
+                print("store show needs a <name>"); return True
+            print(store.load(args.name), end="")
+        return True
+    if args.cmd == "serve":
+        from .cloudserver import serve
+        serve(args.root, args.host, args.port, args.token)
+        return True
+    if args.cmd in ("push", "pull", "sync"):
+        from .cloudstore import HttpRemoteStore
+        from .store import ScriptStore
+        from .sync import StoreSync
+        s = StoreSync(ScriptStore(args.root), HttpRemoteStore(args.url, args.token))
+        if args.cmd == "push":
+            s.push(args.name); print(f"pushed {args.name} -> {args.url}")
+        elif args.cmd == "pull":
+            s.pull(args.name); print(f"pulled {args.name} <- {args.url}")
+        else:
+            res = s.sync()
+            print(f"pushed: {res['pushed']}\npulled: {res['pulled']}")
+        return True
+    return False
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -36,7 +83,26 @@ def main(argv: list[str] | None = None) -> int:
     sp = sub.add_parser("record"); sp.add_argument("out"); sp.add_argument("seconds", type=float, nargs="?", default=10)
     sp = sub.add_parser("play"); sp.add_argument("infile"); sp.add_argument("loops", type=int, nargs="?", default=1)
 
+    # --- device-free: store & cloud sync ---
+    sp = sub.add_parser("export-sh"); sp.add_argument("infile"); sp.add_argument("out")
+    sp.add_argument("--no-timing", action="store_true")
+    sp = sub.add_parser("store"); sp.add_argument("action", choices=["list", "show"])
+    sp.add_argument("name", nargs="?"); sp.add_argument("--root", default="store")
+    sp = sub.add_parser("serve")
+    sp.add_argument("--root", default="store"); sp.add_argument("--host", default="127.0.0.1")
+    sp.add_argument("--port", type=int, default=8000); sp.add_argument("--token", default=None)
+    for name in ("push", "pull"):
+        sp = sub.add_parser(name); sp.add_argument("name")
+        sp.add_argument("--url", required=True); sp.add_argument("--token", default=None)
+        sp.add_argument("--root", default="store")
+    sp = sub.add_parser("sync")
+    sp.add_argument("--url", required=True); sp.add_argument("--token", default=None)
+    sp.add_argument("--root", default="store")
+
     args = p.parse_args(argv)
+
+    if _run_deviceless(args):
+        return 0
 
     from .device import AdbDevice
 
