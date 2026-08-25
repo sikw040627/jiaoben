@@ -25,6 +25,17 @@ def test_recorder_wait_records_pause():
     assert [a.kind for a in rec.actions] == ["tap", "wait"]
 
 
+def test_recorder_trim_lead():
+    clk = FakeClock()
+    rec = Recorder(clock=clk).start()
+    clk.advance(0.4)          # 400ms of dead lead-in before first touch
+    rec.tap(1, 2)             # t=400ms
+    clk.advance(0.3)
+    rec.tap(3, 4)             # t=700ms
+    rec.trim_lead()
+    assert [a.at_ms for a in rec.actions] == [0, 300]
+
+
 def test_recorder_save_and_player_replay(tmp_path, device):
     clk = FakeClock()
     rec = Recorder(clock=clk).start()

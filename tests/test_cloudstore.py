@@ -70,3 +70,59 @@ def test_info_and_list_detailed(make, tmp_path):
 def test_remoteinfo_dict_roundtrip():
     i = RemoteInfo("a", 12, 2, 1000.0)
     assert RemoteInfo.from_dict(i.to_dict()) == i
+
+
+# --- HttpRemoteStore transient-retry behaviour (injected opener + sleep) ---
+import urllib.error
+
+from autoauto.cloudstore import HttpRemoteStore, RemoteStoreError
+
+
+class _FakeResp:
+    def __init__(self, body=b"ok"):
+        self._b = body
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def read(self): return self._b
+
+
+def test_retry_succeeds_after_transient_failures():
+    calls = {"n": 0}
+    slept = []
+
+    def opener(req, timeout=None):
+        calls["n"] += 1
+        if calls["n"] <= 2:                      # fail twice, then succeed
+            raise urllib.error.URLError("connection reset")
+        return _FakeResp(b"body")
+
+    r = HttpRemoteStore("http://h", opener=opener, retries=3,
+                        backoff=0.5, sleep=slept.append)
+    assert r.get("x") == "body"
+    assert calls["n"] == 3
+    assert slept == [0.5, 1.0]                    # backoff * attempt
+
+
+def test_retry_exhausted_raises():
+    slept = []
+
+    def opener(req, timeout=None):
+        raise urllib.error.URLError("refused")
+
+    r = HttpRemoteStore("http://h", opener=opener, retries=2, sleep=slept.append)
+    with pytest.raises(RemoteStoreError):
+        r.get("x")
+    assert len(slept) == 2                        # retried twice then gave up
+
+
+def test_http_404_not_retried():
+    calls = {"n": 0}
+
+    def opener(req, timeout=None):
+        calls["n"] += 1
+        raise urllib.error.HTTPError(req.full_url, 404, "nf", {}, None)
+
+    r = HttpRemoteStore("http://h", opener=opener, retries=5, sleep=lambda s: None)
+    with pytest.raises(RemoteNotFound):
+        r.get("x")
+    assert calls["n"] == 1                        # 404 is terminal, no retry

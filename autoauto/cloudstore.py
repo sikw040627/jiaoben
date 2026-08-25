@@ -179,11 +179,18 @@ class HttpRemoteStore:
     """
 
     def __init__(self, base_url: str, token: str | None = None,
-                 opener=None, timeout: float = 10.0) -> None:
+                 opener=None, timeout: float = 10.0,
+                 retries: int = 2, backoff: float = 0.3, sleep=None) -> None:
         self.base = base_url.rstrip("/")
         self.token = token
         self._open = opener or urllib.request.urlopen
         self.timeout = timeout
+        self.retries = max(0, int(retries))
+        self.backoff = backoff
+        if sleep is None:
+            import time
+            sleep = time.sleep
+        self._sleep = sleep
 
     def _request(self, method: str, path: str, data: str | None = None):
         headers = {}
@@ -195,14 +202,23 @@ class HttpRemoteStore:
             headers["Content-Type"] = "text/x-shellscript; charset=utf-8"
         req = urllib.request.Request(self.base + path, data=body,
                                      method=method, headers=headers)
-        try:
-            return self._open(req, timeout=self.timeout)
-        except urllib.error.HTTPError as e:
-            if e.code == 404:
-                raise RemoteNotFound(path) from None
-            raise RemoteStoreError(f"{method} {path} -> HTTP {e.code}") from e
-        except urllib.error.URLError as e:
-            raise RemoteStoreError(f"{method} {path} failed: {e.reason}") from e
+        attempt = 0
+        while True:
+            try:
+                return self._open(req, timeout=self.timeout)
+            except urllib.error.HTTPError as e:
+                # A real HTTP response — a client/server status, never retried.
+                if e.code == 404:
+                    raise RemoteNotFound(path) from None
+                raise RemoteStoreError(f"{method} {path} -> HTTP {e.code}") from e
+            except urllib.error.URLError as e:
+                # Transport failure (reset/refused/timeout) — retry with backoff.
+                attempt += 1
+                if attempt > self.retries:
+                    raise RemoteStoreError(
+                        f"{method} {path} failed after {attempt} attempt(s): "
+                        f"{e.reason}") from e
+                self._sleep(self.backoff * attempt)
 
     def put(self, name: str, content: str) -> None:
         with self._request("PUT", f"/scripts/{quote(str(name))}", content) as r:

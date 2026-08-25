@@ -14,7 +14,7 @@ Everything is layered so each piece is usable and testable on its own.
 """
 from __future__ import annotations
 
-from .actions import Action, load_actions, save_actions
+from .actions import Action, load_actions, rebase_to_zero, save_actions
 from .device import AdbDevice, DeviceProtocol
 from .devicemanager import DeviceManager, call_with_retries
 from .errors import (
@@ -54,7 +54,7 @@ __version__ = "0.1.0"
 __all__ = [
     "Auto", "AdbDevice", "DeviceProtocol", "Engine", "Context",
     "InputController", "Recorder", "Player", "Action",
-    "save_actions", "load_actions", "load_template",
+    "save_actions", "load_actions", "rebase_to_zero", "load_template",
     "Point", "Rect", "ResolutionAdapter", "MatchResult",
     "run_loop", "RunStats", "setup_logging", "get_logger",
     "Flow", "RunReport", "StepResult", "archive_frame",

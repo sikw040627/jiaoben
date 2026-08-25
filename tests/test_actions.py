@@ -35,3 +35,20 @@ def test_load_rejects_bad_version(tmp_path):
     f.write_text('{"version": 99, "actions": []}', encoding="utf-8")
     with pytest.raises(ValueError):
         load_actions(f)
+
+
+def test_rebase_to_zero_trims_lead():
+    from autoauto.actions import Action, rebase_to_zero
+    acts = [Action("tap", 500, {"x": 1, "y": 2}),
+            Action("tap", 1200, {"x": 3, "y": 4})]
+    out = rebase_to_zero(acts)
+    assert [a.at_ms for a in out] == [0, 700]
+    # original untouched
+    assert [a.at_ms for a in acts] == [500, 1200]
+
+
+def test_rebase_to_zero_empty_and_already_zero():
+    from autoauto.actions import Action, rebase_to_zero
+    assert rebase_to_zero([]) == []
+    acts = [Action("tap", 0, {"x": 1, "y": 1}), Action("tap", 300, {"x": 2, "y": 2})]
+    assert [a.at_ms for a in rebase_to_zero(acts)] == [0, 300]

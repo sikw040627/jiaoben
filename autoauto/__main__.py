@@ -16,6 +16,8 @@ Device-free commands (recording store & cloud sync):
   store show <name> [--root D]  print a stored script
   store info <name> [--root D]  print one script's metadata
   store rename <old> <new> [--root D] [--force]   rename a stored script
+  store import <name> <rec.json> [--root D]        compile a JSON recording in
+  store export <name> <out.sh>  [--root D]         copy a stored script out
   serve [--root D --host H --port P --token T]   run the self-host cloud server
   push <name> --url U [--token T --root D]       upload one script to the cloud
   pull <name> --url U [--token T --root D]       download one script from cloud
@@ -98,6 +100,20 @@ def _dispatch_deviceless(args) -> int:
                 print("store rename needs <old> <new>", file=sys.stderr); return 2
             store.rename(args.name, args.new, overwrite=args.force)
             print(f"renamed {args.name} -> {args.new}")
+        elif args.action == "import":
+            from .actions import load_actions
+            if not args.name or not args.new:
+                print("store import needs <name> <rec.json>", file=sys.stderr); return 2
+            store.save_actions(args.name, load_actions(args.new))
+            print(f"imported {args.new} -> store:{args.name}")
+        elif args.action == "export":
+            from pathlib import Path
+            if not args.name or not args.new:
+                print("store export needs <name> <out.sh>", file=sys.stderr); return 2
+            out = Path(args.new)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(store.load(args.name), encoding="utf-8", newline="\n")
+            print(f"exported store:{args.name} -> {args.new}")
         else:  # show
             if not args.name:
                 print("store show needs a <name>", file=sys.stderr); return 2
@@ -148,7 +164,8 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("--speed", type=float, default=1.0, help="replay speed multiplier")
     sp.add_argument("--loops", type=int, default=1, help="repeat the whole script N times")
     sp = sub.add_parser("store")
-    sp.add_argument("action", choices=["list", "show", "info", "rename"])
+    sp.add_argument("action",
+                    choices=["list", "show", "info", "rename", "import", "export"])
     sp.add_argument("name", nargs="?"); sp.add_argument("new", nargs="?")
     sp.add_argument("--root", default="store"); sp.add_argument("--force", action="store_true")
     sp.add_argument("--url", default=None, help="list the remote catalog instead of local")

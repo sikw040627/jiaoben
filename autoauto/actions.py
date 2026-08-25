@@ -42,6 +42,20 @@ class Action:
                    params=dict(d.get("params", {})))
 
 
+def rebase_to_zero(actions: list[Action]) -> list[Action]:
+    """Shift every timestamp so the first action starts at 0ms.
+
+    Trims dead lead-in time when a recording was started before the first
+    touch. Returns a new list; the input is left unchanged.
+    """
+    if not actions:
+        return []
+    shift = min(a.at_ms for a in actions)
+    if shift == 0:
+        return [Action(a.kind, a.at_ms, dict(a.params)) for a in actions]
+    return [Action(a.kind, a.at_ms - shift, dict(a.params)) for a in actions]
+
+
 def save_actions(actions: list[Action], path: str | Path) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)

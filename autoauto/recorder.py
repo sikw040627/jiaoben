@@ -12,7 +12,7 @@ from __future__ import annotations
 import time
 from typing import Callable
 
-from .actions import Action, load_actions, save_actions
+from .actions import Action, load_actions, rebase_to_zero, save_actions
 from .input_controller import InputController
 from .logging_conf import get_logger
 
@@ -61,6 +61,11 @@ class Recorder:
     def wait(self, ms: int) -> Action:
         """Record an explicit pause (replayed as a sleep)."""
         return self.add("wait", ms=int(ms))
+
+    def trim_lead(self) -> "Recorder":
+        """Drop dead lead-in time so the first action starts at 0ms."""
+        self.actions = rebase_to_zero(self.actions)
+        return self
 
     def save(self, path) -> None:
         save_actions(self.actions, path)
