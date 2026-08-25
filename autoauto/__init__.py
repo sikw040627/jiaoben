@@ -32,6 +32,10 @@ from .recorder import Player, Recorder
 from .report import RunReport, StepResult, archive_frame
 from .scheduler import RunStats, run_loop
 from .script_engine import Context, Engine, load_template
+from .cloudstore import (
+    FileRemoteStore, HttpRemoteStore, MemoryRemoteStore,
+    RemoteNotFound, RemoteStore, RemoteStoreError,
+)
 from .shscript import (
     action_to_cmd, actions_to_sh, convert_recording, save_sh,
 )
@@ -40,6 +44,8 @@ from .stability import (
     start_app, wait_until_stable,
 )
 from .store import ScriptStore
+from .sync import StoreSync
+from .touch import AdbInputBackend, MinitouchBackend, TouchBackend
 from .templateset import TemplateSet, scale_template
 from .vision import MatchResult
 
@@ -59,7 +65,10 @@ __all__ = [
     "preprocess_for_digits", "TemplateSet", "scale_template",
     "run_jobs", "run_flow_on_each",
     "actions_to_sh", "action_to_cmd", "save_sh", "convert_recording",
-    "ScriptStore",
+    "ScriptStore", "StoreSync",
+    "RemoteStore", "MemoryRemoteStore", "FileRemoteStore", "HttpRemoteStore",
+    "RemoteStoreError", "RemoteNotFound",
+    "TouchBackend", "AdbInputBackend", "MinitouchBackend",
     "AutoAutoError", "DeviceError", "NoDeviceError",
     "TargetNotFoundError", "OCRUnavailableError", "ScriptError",
     "__version__",
