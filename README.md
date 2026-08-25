@@ -157,6 +157,8 @@ sh ondevice/autorun.sh http://192.168.1.10:8000 daily_task          # 下载并�
 .\.venv\Scripts\python.exe -m autoauto store list                    # 列表(名称/大小/动作数/修改时间)
 .\.venv\Scripts\python.exe -m autoauto store info daily_task         # 单个脚本元信息
 .\.venv\Scripts\python.exe -m autoauto store rename daily_task morning [--force]
+.\.venv\Scripts\python.exe -m autoauto store import daily_task rec.json     # JSON录制回灌进库
+.\.venv\Scripts\python.exe -m autoauto store export daily_task out.sh       # 从库导出脚本
 .\.venv\Scripts\python.exe -m autoauto push daily_task --url http://HOST:8000
 .\.venv\Scripts\python.exe -m autoauto pull daily_task --url http://HOST:8000
 .\.venv\Scripts\python.exe -m autoauto sync --url http://HOST:8000 --policy local  # 双向同步(冲突以本地为准)

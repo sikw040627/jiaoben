@@ -24,7 +24,8 @@ numbers.py       parse_int/parse_float(纯解析) + read_int/read_float(读屏�
 input_controller 高层点击/长按/滑动/滚动：分辨率自适应 + 随机偏移
 humanize.py      贝塞尔轨迹 + 时长抖动(让拖拽平滑，flick 更易触发)
 ui.py            UiAutomator2 控件树 + 连续多点手势/曲线滑动
-recorder.py      录制/回放(Recorder/Player)   getevent.py 真机触摸事件解析
+recorder.py      录制/回放(Recorder/Player；wait 暂停、trim_lead 去起始空闲)
+                 getevent.py 真机触摸事件解析；actions.rebase_to_zero 时间归零
 script_engine.py Engine 门面：变量(Context)/找图等待/找图点击/条件等待/OCR/read_number
 flow.py          声明式任务流(JSON/dict)：变量、子流程call、if/while/loop/repeat_until、重试、断言
 report.py        运行报告(RunReport) + 失败自动截图存档
@@ -38,7 +39,8 @@ sync.py          StoreSync：push/pull/双向 sync(policy=skip/local/remote 解�
 store.py         根目录 .sh 文件存储库 ScriptStore(save/list/load/delete/
                  info/list_detailed/rename；ScriptInfo=大小/mtime/动作数)
 cloudstore.py    RemoteStore 接口 + Memory/File/Http 三实现
-                 (含 rename、info/list_detailed；RemoteInfo=大小/动作数/mtime)
+                 (含 rename、info/list_detailed；RemoteInfo=大小/动作数/mtime；
+                 HttpRemoteStore 对瞬时网络错误带退避重试，sleep 可注入)
 cloudserver.py   自托管云端服务(stdlib http.server，REST /scripts，
                  /scripts?detail=1 返回带元信息的目录)
 touch.py         TouchBackend 接口(adb input 默认 / minitouch 占位未实现)
