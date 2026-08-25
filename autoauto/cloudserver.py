@@ -5,6 +5,7 @@ phones pull them back. It is the reference backend for `HttpRemoteStore` and
 implements a tiny REST shape over a `RemoteStore`:
 
     GET    /scripts            -> {"scripts": ["daily", ...]}
+    GET    /scripts?detail=1   -> {"scripts": [{"name","size","actions","modified"}, ...]}
     GET    /scripts/<name>     -> the raw .sh text (404 if missing)
     PUT    /scripts/<name>     -> body is the .sh text; stores it
     DELETE /scripts/<name>     -> deletes it (404 if missing)
@@ -19,7 +20,7 @@ from __future__ import annotations
 import json
 import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import unquote
+from urllib.parse import parse_qs, unquote, urlsplit
 
 from .cloudstore import FileRemoteStore, RemoteNotFound, RemoteStore
 
@@ -46,7 +47,7 @@ def make_handler(store: RemoteStore, token: str | None = None):
                 self.wfile.write(body)
 
         def _name(self):
-            m = _NAME_RE.match(self.path)
+            m = _NAME_RE.match(urlsplit(self.path).path)
             return unquote(m.group(1)) if m else None
 
         def log_message(self, *args) -> None:  # keep the server quiet
@@ -56,8 +57,13 @@ def make_handler(store: RemoteStore, token: str | None = None):
         def do_GET(self) -> None:
             if not self._authed():
                 return self._send(401, b"unauthorized")
-            if self.path == "/scripts":
-                body = json.dumps({"scripts": store.list()}).encode("utf-8")
+            split = urlsplit(self.path)
+            if split.path == "/scripts":
+                if parse_qs(split.query).get("detail"):
+                    scripts = [i.to_dict() for i in store.list_detailed()]
+                else:
+                    scripts = store.list()
+                body = json.dumps({"scripts": scripts}).encode("utf-8")
                 return self._send(200, body, "application/json")
             name = self._name()
             if name is None:

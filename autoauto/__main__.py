@@ -11,7 +11,7 @@ Commands:
 
 Device-free commands (recording store & cloud sync):
   export-sh <in.json> <out.sh>  compile a JSON recording to an on-device .sh
-  store list [--root D]         list scripts (name / size / actions / modified)
+  store list [--root D | --url U [--token T]]     local, or the remote catalog
   store show <name> [--root D]  print a stored script
   store info <name> [--root D]  print one script's metadata
   store rename <old> <new> [--root D] [--force]   rename a stored script
@@ -28,6 +28,24 @@ import sys
 from .logging_conf import setup_logging
 
 
+def _fmt_modified(m) -> str:
+    if m is None:
+        return "-"
+    from datetime import datetime
+    return datetime.fromtimestamp(m).isoformat(timespec="seconds")
+
+
+def _print_catalog(rows, remote: bool = False) -> None:
+    """Print a name/size/actions/modified table for ScriptInfo or RemoteInfo."""
+    if not rows:
+        print("(empty)")
+        return
+    print(f"{'NAME':<24} {'SIZE':>7} {'ACTS':>5}  MODIFIED")
+    for r in rows:
+        acts = "-" if r.actions is None else str(r.actions)
+        print(f"{r.name:<24} {r.size:>7} {acts:>5}  {_fmt_modified(r.modified)}")
+
+
 def _run_deviceless(args) -> bool:
     """Handle commands that need no device. Return True if one was handled."""
     if args.cmd == "export-sh":
@@ -39,14 +57,12 @@ def _run_deviceless(args) -> bool:
         from .store import ScriptStore
         store = ScriptStore(args.root)
         if args.action == "list":
-            rows = store.list_detailed()
-            if not rows:
-                print("(empty)")
+            if getattr(args, "url", None):        # remote catalog
+                from .cloudstore import HttpRemoteStore
+                rows = HttpRemoteStore(args.url, args.token).list_detailed()
+                _print_catalog(rows, remote=True)
             else:
-                print(f"{'NAME':<24} {'SIZE':>7} {'ACTS':>5}  MODIFIED")
-                for r in rows:
-                    acts = "-" if r.actions is None else str(r.actions)
-                    print(f"{r.name:<24} {r.size:>7} {acts:>5}  {r.modified_iso()}")
+                _print_catalog(store.list_detailed(), remote=False)
         elif args.action == "info":
             if not args.name:
                 print("store info needs a <name>"); return True
@@ -109,6 +125,8 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("action", choices=["list", "show", "info", "rename"])
     sp.add_argument("name", nargs="?"); sp.add_argument("new", nargs="?")
     sp.add_argument("--root", default="store"); sp.add_argument("--force", action="store_true")
+    sp.add_argument("--url", default=None, help="list the remote catalog instead of local")
+    sp.add_argument("--token", default=None)
     sp = sub.add_parser("serve")
     sp.add_argument("--root", default="store"); sp.add_argument("--host", default="127.0.0.1")
     sp.add_argument("--port", type=int, default=8000); sp.add_argument("--token", default=None)

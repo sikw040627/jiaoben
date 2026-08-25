@@ -47,6 +47,19 @@ def test_http_get_missing(server):
         r.get("nope")
 
 
+def test_http_list_detailed(server):
+    r = HttpRemoteStore(server)
+    r.put("combo", "#!/system/bin/sh\n# actions: 2\ninput tap 1 2\n")
+    rows = r.list_detailed()
+    assert len(rows) == 1
+    info = rows[0]
+    assert info.name == "combo"
+    assert info.actions == 2
+    assert info.size > 0
+    assert info.modified is not None          # file-backed server has mtime
+    assert r.info("combo").name == "combo"
+
+
 def test_http_rename(server):
     r = HttpRemoteStore(server)
     assert r.rename("ghost", "x") is False

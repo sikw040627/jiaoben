@@ -44,6 +44,10 @@ class StoreSync:
     def list_remote(self) -> list[str]:
         return self.remote.list()
 
+    def list_remote_detailed(self):
+        """Remote catalog with per-script metadata (size/actions/modified)."""
+        return self.remote.list_detailed()
+
     def rename(self, old: str, new: str) -> dict[str, bool]:
         """Rename on both ends where present. Returns which side was renamed."""
         local_ok = False

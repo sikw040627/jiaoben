@@ -1,7 +1,7 @@
 import pytest
 
 from autoauto.cloudstore import (
-    FileRemoteStore, MemoryRemoteStore, RemoteNotFound,
+    FileRemoteStore, MemoryRemoteStore, RemoteInfo, RemoteNotFound,
 )
 
 
@@ -48,3 +48,25 @@ def test_rename(make, tmp_path):
     r.put("c", "z")
     with pytest.raises(RemoteStoreError):          # target exists
         r.rename("b", "c")
+
+
+@pytest.mark.parametrize("make", [
+    lambda tp: MemoryRemoteStore(),
+    lambda tp: FileRemoteStore(tp / "remote"),
+])
+def test_info_and_list_detailed(make, tmp_path):
+    r = make(tmp_path)
+    r.put("combo", "#!/system/bin/sh\n# actions: 3\ninput tap 1 2\n")
+    r.put("raw", "input tap 9 9\n")
+    i = r.info("combo")
+    assert isinstance(i, RemoteInfo)
+    assert i.name == "combo" and i.actions == 3
+    assert i.size == len("#!/system/bin/sh\n# actions: 3\ninput tap 1 2\n".encode())
+    assert r.info("raw").actions is None
+    rows = r.list_detailed()
+    assert [x.name for x in rows] == ["combo", "raw"]
+
+
+def test_remoteinfo_dict_roundtrip():
+    i = RemoteInfo("a", 12, 2, 1000.0)
+    assert RemoteInfo.from_dict(i.to_dict()) == i

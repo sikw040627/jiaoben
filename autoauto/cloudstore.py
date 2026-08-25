@@ -21,8 +21,39 @@ from __future__ import annotations
 import json
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 from urllib.parse import quote
+
+from .store import parse_action_count
+
+
+@dataclass(frozen=True)
+class RemoteInfo:
+    """Metadata about a remotely stored script.
+
+    `modified` is epoch seconds when the backend can supply it (file-backed),
+    else None (e.g. the in-memory store keeps no timestamps).
+    """
+    name: str
+    size: int              # utf-8 byte length of the script
+    actions: int | None    # parsed from the `# actions: N` header
+    modified: float | None
+
+    def to_dict(self) -> dict:
+        return {"name": self.name, "size": self.size,
+                "actions": self.actions, "modified": self.modified}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "RemoteInfo":
+        return cls(name=d["name"], size=int(d["size"]),
+                   actions=d.get("actions"), modified=d.get("modified"))
+
+
+def _info_from_content(name: str, content: str,
+                       modified: float | None = None) -> RemoteInfo:
+    return RemoteInfo(name=name, size=len(content.encode("utf-8")),
+                      actions=parse_action_count(content), modified=modified)
 
 
 class RemoteStoreError(Exception):
@@ -41,6 +72,8 @@ class RemoteStore(Protocol):
     def delete(self, name: str) -> bool: ...
     def exists(self, name: str) -> bool: ...
     def rename(self, old: str, new: str) -> bool: ...
+    def info(self, name: str) -> "RemoteInfo": ...
+    def list_detailed(self) -> list["RemoteInfo"]: ...
 
 
 def _rename_via_copy(store: "RemoteStore", old: str, new: str) -> bool:
@@ -86,6 +119,12 @@ class MemoryRemoteStore:
     def rename(self, old: str, new: str) -> bool:
         return _rename_via_copy(self, old, new)
 
+    def info(self, name: str) -> RemoteInfo:
+        return _info_from_content(str(name), self.get(name))
+
+    def list_detailed(self) -> list[RemoteInfo]:
+        return [self.info(n) for n in self.list()]
+
 
 class FileRemoteStore:
     """File-backed RemoteStore — the persistent backend for the self-host server."""
@@ -119,6 +158,16 @@ class FileRemoteStore:
             return False
         except FileExistsError as e:
             raise RemoteStoreError(str(e)) from None
+
+    def info(self, name: str) -> RemoteInfo:
+        if not self._s.exists(name):
+            raise RemoteNotFound(str(name))
+        i = self._s.info(name)
+        return RemoteInfo(name=i.name, size=i.size, actions=i.actions,
+                          modified=i.modified)
+
+    def list_detailed(self) -> list[RemoteInfo]:
+        return [self.info(n) for n in self._s.list()]
 
 
 class HttpRemoteStore:
@@ -185,3 +234,15 @@ class HttpRemoteStore:
     def rename(self, old: str, new: str) -> bool:
         # No dedicated endpoint; move client-side via get -> put -> delete.
         return _rename_via_copy(self, old, new)
+
+    def list_detailed(self) -> list[RemoteInfo]:
+        with self._request("GET", "/scripts?detail=1") as r:
+            data = json.loads(r.read().decode("utf-8"))["scripts"]
+        return [RemoteInfo.from_dict(d) for d in data]
+
+    def info(self, name: str) -> RemoteInfo:
+        # Reuse the detailed listing; fall back to content if absent.
+        for i in self.list_detailed():
+            if i.name == str(name):
+                return i
+        raise RemoteNotFound(str(name))

@@ -21,6 +21,12 @@ SUFFIX = ".sh"
 _ACTIONS_RE = re.compile(r"^#\s*actions:\s*(\d+)", re.MULTILINE)
 
 
+def parse_action_count(text: str) -> int | None:
+    """Read the `# actions: N` banner a compiled script carries, if present."""
+    m = _ACTIONS_RE.search(text)
+    return int(m.group(1)) if m else None
+
+
 @dataclass(frozen=True)
 class ScriptInfo:
     """Metadata about one stored script (derived, no sidecar files)."""
@@ -85,9 +91,9 @@ class ScriptStore:
         """Size / modified-time / action-count for one script."""
         p = self.path(name)
         st = p.stat()  # raises FileNotFoundError if missing
-        m = _ACTIONS_RE.search(p.read_text(encoding="utf-8"))
+        actions = parse_action_count(p.read_text(encoding="utf-8"))
         return ScriptInfo(name=p.stem, size=st.st_size, modified=st.st_mtime,
-                          actions=int(m.group(1)) if m else None)
+                          actions=actions)
 
     def list_detailed(self) -> list[ScriptInfo]:
         """`info` for every stored script, sorted by name."""

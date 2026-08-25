@@ -34,7 +34,7 @@ from .scheduler import RunStats, run_loop
 from .script_engine import Context, Engine, load_template
 from .cloudstore import (
     FileRemoteStore, HttpRemoteStore, MemoryRemoteStore,
-    RemoteNotFound, RemoteStore, RemoteStoreError,
+    RemoteInfo, RemoteNotFound, RemoteStore, RemoteStoreError,
 )
 from .shscript import (
     action_to_cmd, actions_to_sh, convert_recording, save_sh,
@@ -67,7 +67,7 @@ __all__ = [
     "actions_to_sh", "action_to_cmd", "save_sh", "convert_recording",
     "ScriptStore", "ScriptInfo", "StoreSync",
     "RemoteStore", "MemoryRemoteStore", "FileRemoteStore", "HttpRemoteStore",
-    "RemoteStoreError", "RemoteNotFound",
+    "RemoteStoreError", "RemoteNotFound", "RemoteInfo",
     "TouchBackend", "AdbInputBackend", "MinitouchBackend",
     "AutoAutoError", "DeviceError", "NoDeviceError",
     "TargetNotFoundError", "OCRUnavailableError", "ScriptError",
