@@ -58,6 +58,10 @@ class Recorder:
     def text(self, s: str) -> Action:
         return self.add("text", s=s)
 
+    def wait(self, ms: int) -> Action:
+        """Record an explicit pause (replayed as a sleep)."""
+        return self.add("wait", ms=int(ms))
+
     def save(self, path) -> None:
         save_actions(self.actions, path)
 

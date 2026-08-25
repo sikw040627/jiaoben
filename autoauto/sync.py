@@ -57,11 +57,20 @@ class StoreSync:
         remote_ok = self.remote.rename(old, new)
         return {"local": local_ok, "remote": remote_ok}
 
-    def sync(self) -> dict[str, list[str]]:
-        """Reconcile: upload local-only names, download remote-only names.
+    def sync(self, policy: str = "skip") -> dict[str, list[str]]:
+        """Reconcile local and remote.
 
-        Names present on both sides are left untouched (no content diffing).
+        Always: upload local-only names, download remote-only names. For names
+        present on **both** sides whose content differs, `policy` decides:
+
+        * ``"skip"``   (default) leave both untouched.
+        * ``"local"``  overwrite remote with the local copy.
+        * ``"remote"`` overwrite local with the remote copy.
+
+        Returns the names touched under each of ``pushed``/``pulled``/``updated``.
         """
+        if policy not in {"skip", "local", "remote"}:
+            raise ValueError(f"unknown sync policy: {policy!r}")
         local = set(self.local.list())
         remote = set(self.remote.list())
         pushed = sorted(local - remote)
@@ -70,4 +79,17 @@ class StoreSync:
             self.push(n)
         for n in pulled:
             self.pull(n)
-        return {"pushed": pushed, "pulled": pulled}
+
+        updated: list[str] = []
+        if policy != "skip":
+            for n in sorted(local & remote):
+                lc = self.local.load(n)
+                rc = self.remote.get(n)
+                if lc == rc:
+                    continue
+                if policy == "local":
+                    self.remote.put(n, lc)
+                else:  # "remote"
+                    self.local.save(n, rc)
+                updated.append(n)
+        return {"pushed": pushed, "pulled": pulled, "updated": updated}

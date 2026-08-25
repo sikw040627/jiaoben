@@ -40,6 +40,38 @@ def test_actions_to_sh_no_timing_and_no_header():
     assert sh == "input tap 1 2\ninput tap 3 4\n"
 
 
+def test_speed_scales_sleep():
+    actions = [Action("tap", 0, {"x": 1, "y": 2}),
+               Action("tap", 1000, {"x": 3, "y": 4})]
+    sh = actions_to_sh(actions, header=False, speed=2.0)
+    # 1000ms gap at 2x -> 0.5s sleep
+    assert sh == "input tap 1 2\nsleep 0.5\ninput tap 3 4\n"
+
+
+def test_loops_wraps_body_in_while():
+    actions = [Action("tap", 0, {"x": 1, "y": 2})]
+    sh = actions_to_sh(actions, header=False, loops=3)
+    assert sh == (
+        "i=0\n"
+        'while [ "$i" -lt 3 ]; do\n'
+        "  input tap 1 2\n"
+        "  i=$((i + 1))\n"
+        "done\n"
+    )
+
+
+def test_loops_header_notes_count():
+    sh = actions_to_sh([Action("tap", 0, {"x": 1, "y": 2})], loops=5)
+    assert "# loops: 5" in sh
+    assert 'while [ "$i" -lt 5 ]; do' in sh
+
+
+def test_speed_zero_falls_back():
+    actions = [Action("tap", 0, {"x": 1, "y": 2}), Action("tap", 1000, {"x": 3, "y": 4})]
+    assert actions_to_sh(actions, header=False, speed=0) == \
+        actions_to_sh(actions, header=False, speed=1.0)
+
+
 def test_save_and_convert_roundtrip(tmp_path):
     from autoauto.actions import save_actions
     actions = [Action("tap", 0, {"x": 1, "y": 2}), Action("wait", 100, {"ms": 100})]

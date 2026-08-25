@@ -15,6 +15,16 @@ def test_recorder_timestamps_with_fake_clock():
     assert rec.actions[0].kind == "tap"
 
 
+def test_recorder_wait_records_pause():
+    clk = FakeClock()
+    rec = Recorder(clock=clk).start()
+    rec.tap(1, 2)
+    w = rec.wait(250)
+    assert w.kind == "wait"
+    assert w.params == {"ms": 250}
+    assert [a.kind for a in rec.actions] == ["tap", "wait"]
+
+
 def test_recorder_save_and_player_replay(tmp_path, device):
     clk = FakeClock()
     rec = Recorder(clock=clk).start()

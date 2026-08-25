@@ -10,7 +10,8 @@ Commands:
   play <in.json> [loops]        replay a recording
 
 Device-free commands (recording store & cloud sync):
-  export-sh <in.json> <out.sh>  compile a JSON recording to an on-device .sh
+  export-sh <in.json> <out.sh> [--speed S --loops N --no-timing]
+                                compile a JSON recording to an on-device .sh
   store list [--root D | --url U [--token T]]     local, or the remote catalog
   store show <name> [--root D]  print a stored script
   store info <name> [--root D]  print one script's metadata
@@ -18,7 +19,7 @@ Device-free commands (recording store & cloud sync):
   serve [--root D --host H --port P --token T]   run the self-host cloud server
   push <name> --url U [--token T --root D]       upload one script to the cloud
   pull <name> --url U [--token T --root D]       download one script from cloud
-  sync --url U [--token T --root D]              two-way sync local <-> cloud
+  sync --url U [--token T --root D --policy skip|local|remote]  two-way sync
 """
 from __future__ import annotations
 
@@ -35,7 +36,7 @@ def _fmt_modified(m) -> str:
     return datetime.fromtimestamp(m).isoformat(timespec="seconds")
 
 
-def _print_catalog(rows, remote: bool = False) -> None:
+def _print_catalog(rows) -> None:
     """Print a name/size/actions/modified table for ScriptInfo or RemoteInfo."""
     if not rows:
         print("(empty)")
@@ -46,57 +47,80 @@ def _print_catalog(rows, remote: bool = False) -> None:
         print(f"{r.name:<24} {r.size:>7} {acts:>5}  {_fmt_modified(r.modified)}")
 
 
-def _run_deviceless(args) -> bool:
-    """Handle commands that need no device. Return True if one was handled."""
+_DEVICELESS = {"export-sh", "store", "serve", "push", "pull", "sync"}
+
+
+def _run_deviceless(args) -> int | None:
+    """Handle commands that need no device.
+
+    Returns an exit code (0 ok, 1 on an expected error), or None if `args.cmd`
+    is not a device-free command (so the caller proceeds to connect a device).
+    """
+    if args.cmd not in _DEVICELESS:
+        return None
+    try:
+        return _dispatch_deviceless(args)
+    except (FileNotFoundError, FileExistsError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    except Exception as e:  # network / server errors from the cloud layer
+        from .cloudstore import RemoteStoreError
+        if isinstance(e, RemoteStoreError):
+            print(f"error: {e}", file=sys.stderr)
+            return 1
+        raise
+
+
+def _dispatch_deviceless(args) -> int:
     if args.cmd == "export-sh":
         from .shscript import convert_recording
-        convert_recording(args.infile, args.out, keep_timing=not args.no_timing)
+        convert_recording(args.infile, args.out, keep_timing=not args.no_timing,
+                          speed=args.speed, loops=args.loops)
         print(f"compiled {args.infile} -> {args.out}")
-        return True
+        return 0
     if args.cmd == "store":
         from .store import ScriptStore
         store = ScriptStore(args.root)
         if args.action == "list":
             if getattr(args, "url", None):        # remote catalog
                 from .cloudstore import HttpRemoteStore
-                rows = HttpRemoteStore(args.url, args.token).list_detailed()
-                _print_catalog(rows, remote=True)
+                _print_catalog(HttpRemoteStore(args.url, args.token).list_detailed())
             else:
-                _print_catalog(store.list_detailed(), remote=False)
+                _print_catalog(store.list_detailed())
         elif args.action == "info":
             if not args.name:
-                print("store info needs a <name>"); return True
+                print("store info needs a <name>", file=sys.stderr); return 2
             i = store.info(args.name)
             print(f"name={i.name} size={i.size} actions={i.actions} "
                   f"modified={i.modified_iso()}")
         elif args.action == "rename":
             if not args.name or not args.new:
-                print("store rename needs <old> <new>"); return True
+                print("store rename needs <old> <new>", file=sys.stderr); return 2
             store.rename(args.name, args.new, overwrite=args.force)
             print(f"renamed {args.name} -> {args.new}")
         else:  # show
             if not args.name:
-                print("store show needs a <name>"); return True
+                print("store show needs a <name>", file=sys.stderr); return 2
             print(store.load(args.name), end="")
-        return True
+        return 0
     if args.cmd == "serve":
         from .cloudserver import serve
         serve(args.root, args.host, args.port, args.token)
-        return True
-    if args.cmd in ("push", "pull", "sync"):
-        from .cloudstore import HttpRemoteStore
-        from .store import ScriptStore
-        from .sync import StoreSync
-        s = StoreSync(ScriptStore(args.root), HttpRemoteStore(args.url, args.token))
-        if args.cmd == "push":
-            s.push(args.name); print(f"pushed {args.name} -> {args.url}")
-        elif args.cmd == "pull":
-            s.pull(args.name); print(f"pulled {args.name} <- {args.url}")
-        else:
-            res = s.sync()
-            print(f"pushed: {res['pushed']}\npulled: {res['pulled']}")
-        return True
-    return False
+        return 0
+    # push / pull / sync
+    from .cloudstore import HttpRemoteStore
+    from .store import ScriptStore
+    from .sync import StoreSync
+    s = StoreSync(ScriptStore(args.root), HttpRemoteStore(args.url, args.token))
+    if args.cmd == "push":
+        s.push(args.name); print(f"pushed {args.name} -> {args.url}")
+    elif args.cmd == "pull":
+        s.pull(args.name); print(f"pulled {args.name} <- {args.url}")
+    else:
+        res = s.sync(policy=args.policy)
+        print(f"pushed: {res['pushed']}\npulled: {res['pulled']}\n"
+              f"updated: {res['updated']}")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -121,6 +145,8 @@ def main(argv: list[str] | None = None) -> int:
     # --- device-free: store & cloud sync ---
     sp = sub.add_parser("export-sh"); sp.add_argument("infile"); sp.add_argument("out")
     sp.add_argument("--no-timing", action="store_true")
+    sp.add_argument("--speed", type=float, default=1.0, help="replay speed multiplier")
+    sp.add_argument("--loops", type=int, default=1, help="repeat the whole script N times")
     sp = sub.add_parser("store")
     sp.add_argument("action", choices=["list", "show", "info", "rename"])
     sp.add_argument("name", nargs="?"); sp.add_argument("new", nargs="?")
@@ -137,11 +163,14 @@ def main(argv: list[str] | None = None) -> int:
     sp = sub.add_parser("sync")
     sp.add_argument("--url", required=True); sp.add_argument("--token", default=None)
     sp.add_argument("--root", default="store")
+    sp.add_argument("--policy", choices=["skip", "local", "remote"], default="skip",
+                    help="how to resolve names that exist on both sides")
 
     args = p.parse_args(argv)
 
-    if _run_deviceless(args):
-        return 0
+    rc = _run_deviceless(args)
+    if rc is not None:
+        return rc
 
     from .device import AdbDevice
 
