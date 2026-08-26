@@ -42,7 +42,7 @@ cloudstore.py    RemoteStore 接口 + Memory/File/Http 三实现
                  (含 rename、info/list_detailed；RemoteInfo=大小/动作数/mtime；
                  HttpRemoteStore 对瞬时网络错误带退避重试，sleep 可注入)
 cloudserver.py   自托管云端服务(stdlib http.server，REST /scripts，
-                 /scripts?detail=1 返回带元信息的目录)
+                 /scripts?detail=1 元信息目录；GET / 为 HTML 浏览页，随鉴权)
 touch.py         TouchBackend 接口(adb input 默认 / minitouch 占位未实现)
 ondevice/        手机端 Termux 运行时 autorun.sh(下载云端脚本并执行)
 __main__.py      CLI：devices/screencap/tap/swipe/findimage/record/play

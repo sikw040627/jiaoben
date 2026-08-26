@@ -50,8 +50,8 @@ print("金色像素:", p, "该点颜色:", eng.pixel(100, 200))
 .\.venv\Scripts\python.exe -m autoauto screencap shot.png
 .\.venv\Scripts\python.exe -m autoauto tap 500 1000
 .\.venv\Scripts\python.exe -m autoauto findimage assets\templates\start.png
-.\.venv\Scripts\python.exe -m autoauto record rec.json 15     # 录制 15 秒真机触摸
-.\.venv\Scripts\python.exe -m autoauto play rec.json 3        # 回放 3 遍
+.\.venv\Scripts\python.exe -m autoauto record rec.json 15 --trim --sh rec.sh   # 录制并直接编译.sh
+.\.venv\Scripts\python.exe -m autoauto play rec.json 3 --speed 2 --trim        # 2倍速回放3遍
 ```
 
 ## 功能对标自动精灵
@@ -149,6 +149,9 @@ sync.push("daily_task")          # 上传；sync.sync() 可双向同步
 ```sh
 sh ondevice/autorun.sh http://192.168.1.10:8000 daily_task          # 下载并立即执行
 ```
+
+或直接用手机浏览器打开 `http://192.168.1.10:8000/` 浏览脚本目录，点链接下载 `.sh`（服务开了
+`--token` 时浏览器方式不可用，浏览页也需鉴权）。
 
 命令行速览：
 
