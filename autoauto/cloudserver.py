@@ -4,6 +4,7 @@ Run it on any machine your phones can reach; recordings are uploaded here and
 phones pull them back. It is the reference backend for `HttpRemoteStore` and
 implements a tiny REST shape over a `RemoteStore`:
 
+    GET    /                   -> a plain HTML catalog page (browse from a phone)
     GET    /scripts            -> {"scripts": ["daily", ...]}
     GET    /scripts?detail=1   -> {"scripts": [{"name","size","actions","modified"}, ...]}
     GET    /scripts/<name>     -> the raw .sh text (404 if missing)
@@ -17,10 +18,11 @@ Start from the CLI:  python -m autoauto serve --root store --port 8000
 """
 from __future__ import annotations
 
+import html
 import json
 import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, unquote, urlsplit
+from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 from .cloudstore import FileRemoteStore, RemoteNotFound, RemoteStore
 
@@ -54,10 +56,32 @@ def make_handler(store: RemoteStore, token: str | None = None):
             pass
 
         # -- verbs -----------------------------------------------------
+        def _index_html(self) -> bytes:
+            rows = store.list_detailed()
+            items = []
+            for i in rows:
+                href = "/scripts/" + quote(i.name)
+                acts = "-" if i.actions is None else i.actions
+                items.append(
+                    f'<li><a href="{html.escape(href)}">{html.escape(i.name)}</a>'
+                    f' <small>{i.size} B, {acts} acts</small></li>')
+            body = (
+                "<!doctype html><meta charset=utf-8>"
+                "<meta name=viewport content='width=device-width,initial-scale=1'>"
+                "<title>autoauto scripts</title>"
+                "<h1>autoauto scripts (%d)</h1><ul>%s</ul>"
+                "<p><small>tap a script to download the .sh; run it on-device "
+                "with <code>sh &lt;file&gt;</code>.</small></p>"
+                % (len(rows), "".join(items) or "<li><em>(empty)</em></li>"))
+            return body.encode("utf-8")
+
         def do_GET(self) -> None:
             if not self._authed():
                 return self._send(401, b"unauthorized")
             split = urlsplit(self.path)
+            if split.path in ("", "/"):
+                return self._send(200, self._index_html(),
+                                  "text/html; charset=utf-8")
             if split.path == "/scripts":
                 if parse_qs(split.query).get("detail"):
                     scripts = [i.to_dict() for i in store.list_detailed()]

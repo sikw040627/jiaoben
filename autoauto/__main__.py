@@ -6,8 +6,8 @@ Commands:
   tap <x> <y>                   tap a coordinate
   swipe <x1> <y1> <x2> <y2> [ms]  swipe
   findimage <template.png>      report best match (score + centre)
-  record <out.json> [seconds]   record touches via getevent (needs a device)
-  play <in.json> [loops]        replay a recording
+  record <out.json> [seconds] [--trim --sh OUT]   record touches (needs a device)
+  play <in.json> [loops] [--speed S --trim]        replay a recording
 
 Device-free commands (recording store & cloud sync):
   export-sh <in.json> <out.sh> [--speed S --loops N --no-timing]
@@ -156,7 +156,10 @@ def main(argv: list[str] | None = None) -> int:
     sp = sub.add_parser("findimage"); sp.add_argument("template")
     sp.add_argument("--threshold", type=float, default=0.85)
     sp = sub.add_parser("record"); sp.add_argument("out"); sp.add_argument("seconds", type=float, nargs="?", default=10)
+    sp.add_argument("--trim", action="store_true", help="drop dead lead-in time")
+    sp.add_argument("--sh", default=None, help="also write a compiled .sh here")
     sp = sub.add_parser("play"); sp.add_argument("infile"); sp.add_argument("loops", type=int, nargs="?", default=1)
+    sp.add_argument("--speed", type=float, default=1.0); sp.add_argument("--trim", action="store_true")
 
     # --- device-free: store & cloud sync ---
     sp = sub.add_parser("export-sh"); sp.add_argument("infile"); sp.add_argument("out")
@@ -212,7 +215,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"found={res.found} score={res.score:.3f} center="
               f"{res.center.as_tuple() if res.center else None}")
     elif args.cmd == "record":
-        from .actions import save_actions
+        from .actions import rebase_to_zero, save_actions
         from .getevent import stream_getevent
         import time
         acts = []
@@ -222,12 +225,22 @@ def main(argv: list[str] | None = None) -> int:
             acts.append(a)
             if time.monotonic() - t0 >= args.seconds:
                 break
+        if args.trim:
+            acts = rebase_to_zero(acts)
         save_actions(acts, args.out)
         print(f"saved {len(acts)} actions -> {args.out}")
+        if args.sh:
+            from .shscript import save_sh
+            save_sh(acts, args.sh)
+            print(f"compiled .sh -> {args.sh}")
     elif args.cmd == "play":
+        from .actions import load_actions, rebase_to_zero
         from .recorder import Player
         from .input_controller import InputController
-        n = Player(InputController(dev)).play_file(args.infile, loops=args.loops)
+        actions = load_actions(args.infile)
+        if args.trim:
+            actions = rebase_to_zero(actions)
+        n = Player(InputController(dev), speed=args.speed).play(actions, loops=args.loops)
         print(f"dispatched {n} actions")
     return 0
 

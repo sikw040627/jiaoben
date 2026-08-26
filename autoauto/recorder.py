@@ -70,6 +70,16 @@ class Recorder:
     def save(self, path) -> None:
         save_actions(self.actions, path)
 
+    def to_sh(self, **kwargs) -> str:
+        """Compile the recording to an on-device shell script (text)."""
+        from .shscript import actions_to_sh
+        return actions_to_sh(self.actions, **kwargs)
+
+    def save_sh(self, path, **kwargs) -> None:
+        """Compile the recording and write it as a `.sh` file."""
+        from .shscript import save_sh
+        save_sh(self.actions, path, **kwargs)
+
 
 class Player:
     """Replays a list of actions, honouring their relative timing."""

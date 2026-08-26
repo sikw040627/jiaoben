@@ -47,6 +47,26 @@ def test_http_get_missing(server):
         r.get("nope")
 
 
+def test_index_page(server):
+    import urllib.request
+    HttpRemoteStore(server).put("daily", "#!/system/bin/sh\n# actions: 2\ninput tap 1 2\n")
+    with urllib.request.urlopen(server + "/") as resp:
+        assert resp.status == 200
+        assert "text/html" in resp.headers.get("Content-Type", "")
+        html = resp.read().decode("utf-8")
+    assert "autoauto scripts" in html
+    assert "daily" in html
+    assert '/scripts/daily' in html
+
+
+def test_index_requires_auth(auth_server):
+    import urllib.error
+    import urllib.request
+    with pytest.raises(urllib.error.HTTPError) as ei:
+        urllib.request.urlopen(auth_server + "/")
+    assert ei.value.code == 401
+
+
 def test_http_list_detailed(server):
     r = HttpRemoteStore(server)
     r.put("combo", "#!/system/bin/sh\n# actions: 2\ninput tap 1 2\n")

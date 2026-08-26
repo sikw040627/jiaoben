@@ -25,6 +25,18 @@ def test_recorder_wait_records_pause():
     assert [a.kind for a in rec.actions] == ["tap", "wait"]
 
 
+def test_recorder_to_sh_and_save_sh(tmp_path):
+    clk = FakeClock()
+    rec = Recorder(clock=clk).start()
+    rec.tap(10, 20)
+    sh = rec.to_sh()
+    assert sh.startswith("#!/system/bin/sh")
+    assert "input tap 10 20" in sh
+    f = tmp_path / "r.sh"
+    rec.save_sh(f)
+    assert f.read_text(encoding="utf-8") == sh
+
+
 def test_recorder_trim_lead():
     clk = FakeClock()
     rec = Recorder(clock=clk).start()
